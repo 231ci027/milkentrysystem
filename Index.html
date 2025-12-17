@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Milk Entry & Billing System</title>
+
+<style>
+:root{
+  --green:#4CAF50;
+  --dark:#2c3e50;
+  --bg:#f4f6f8;
+  --card:#ffffff;
+  --light:#e8f5e9;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:var(--bg);
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:15px;
+}
+
+header{
+  background:linear-gradient(135deg,#4CAF50,#2ecc71);
+  color:white;
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+}
+
+.card{
+  background:var(--card);
+  margin-top:20px;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 6px 15px rgba(0,0,0,0.08);
+}
+
+h2,h3{
+  text-align:center;
+  color:var(--dark);
+}
+
+label{
+  display:block;
+  margin-top:10px;
+  font-weight:bold;
+}
+
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin-top:5px;
+  font-size:15px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+
+button{
+  background:var(--green);
+  color:white;
+  border:none;
+  margin-top:15px;
+  font-weight:bold;
+}
+
+button.secondary{
+  background:#34495e;
+}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+@media(max-width:600px){
+  .row{grid-template-columns:1fr}
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
+}
+
+th{
+  background:var(--light);
+  color:#2e7d32;
+}
+
+.small{
+  font-size:13px;
+  color:#666;
+}
+
+ul{
+  padding-left:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+  <h1>🥛 Milk Entry & Billing System</h1>
+  <p>Single Day • Bulk Entry • Skip Dates • Offline</p>
+</header>
+
+<!-- ENTRY SECTION -->
+<div class="card">
+<h2>Milk Entry</h2>
+
+<label>Customer</label>
+<select id="entryCustomer">
+  <option>Ravi</option>
+  <option>Priya</option>
+</select>
+
+<label>Quantity (per day)</label>
+<select id="entryQty">
+  <option value="0.25">¼ L – ₹12</option>
+  <option value="0.5">½ L – ₹24</option>
+  <option value="1">1 L – ₹48</option>
+</select>
+
+<div class="row">
+  <div>
+    <label>Single Day Entry</label>
+    <input type="date" id="singleDate">
+    <button onclick="addSingle()">Add Single Day</button>
+  </div>
+
+  <div>
+    <label>Bulk Entry (From – To)</label>
+    <input type="date" id="bulkFrom">
+    <input type="date" id="bulkTo">
+    <button onclick="addBulk()">Add Bulk</button>
+  </div>
+</div>
+
+<label>
+<input type="checkbox" id="skipSunday"> Skip Sundays
+</label>
+
+<label>Manually Skip Dates (comma separated)</label>
+<input type="text" id="skipDates" placeholder="2025-08-05,2025-08-10">
+<div class="small">Format: YYYY-MM-DD</div>
+
+<button onclick="saveEntries()">Save Entry</button>
+</div>
+
+<!-- BILL SECTION -->
+<div class="card">
+<h2>Customer Bill</h2>
+
+<label>Customer</label>
+<select id="billCustomer">
+  <option value="">Select Customer</option>
+  <option>Ravi</option>
+  <option>Priya</option>
+</select>
+
+<div class="row">
+  <div>
+    <label>From Date</label>
+    <input type="date" id="billFrom">
+  </div>
+  <div>
+    <label>To Date</label>
+    <input type="date" id="billTo">
+  </div>
+</div>
+
+<button onclick="generateBill()">Generate Bill</button>
+
+<div id="billResult"></div>
+
+<button class="secondary" onclick="window.print()">🖨 Print Bill</button>
+</div>
+
+</div>
+
+<script>
+let milkEntries = JSON.parse(localStorage.getItem("milkEntries")) || [];
+let skippedLog = JSON.parse(localStorage.getItem("skippedLog")) || [];
+let tempEntries = [];
+
+// Price logic
+function getAmount(q){
+  if(q==0.25) return 12;
+  if(q==0.5) return 24;
+  if(q==1) return 48;
+  return 0;
+}
+
+// Single day entry
+function addSingle(){
+  const customer = entryCustomer.value;
+  const date = singleDate.value;
+  const qty = parseFloat(entryQty.value);
+
+  if(!date){
+    alert("Please select a date");
+    return;
+  }
+
+  tempEntries = [{customer,date,qty}];
+  alert("Single day entry ready. Click Save Entry.");
+}
+
+// Bulk entry with skip logic
+function addBulk(){
+  const customer = entryCustomer.value;
+  const from = new Date(bulkFrom.value);
+  const to = new Date(bulkTo.value);
+  const qty = parseFloat(entryQty.value);
+  const skipSun = skipSunday.checked;
+
+  if(!bulkFrom.value || !bulkTo.value || from>to){
+    alert("Please select valid dates");
+    return;
+  }
